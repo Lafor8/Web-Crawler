@@ -11,3 +11,13 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 /bin/
+
+# Data Folders
+/data_dermIS/
+/data_dermoscopyAtlas/
+/data_dermNetNZ/
+/data_catalogOfClinicalImages/
+
+# Scrap Data Folders
+/Data/
+/InterData/
