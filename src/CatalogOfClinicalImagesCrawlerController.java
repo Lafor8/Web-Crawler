@@ -1,3 +1,5 @@
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +38,7 @@ public class CatalogOfClinicalImagesCrawlerController {
 		 */
 		config.setIncludeBinaryContentInCrawling(true);
 
-		String[] crawlDomains = { "http://meded.ucsd.edu/clinicalimg/skin.htm" };
+		String[] crawlDomains = { "https://meded.ucsd.edu/clinicalimg/skin.htm" };
 
 		PageFetcher pageFetcher = new PageFetcher(config);
 		RobotstxtConfig robotstxtConfig = new RobotstxtConfig();
@@ -51,5 +53,18 @@ public class CatalogOfClinicalImagesCrawlerController {
 
 		controller.start(CatalogOfClinicalImagesListingCrawler.class, numberOfCrawlers);
 		
+		List<String> dermPages = CatalogOfClinicalImagesListingCrawler.dermPages;
+		
+		pageFetcher = new PageFetcher(config);
+		robotstxtConfig = new RobotstxtConfig();
+		robotstxtServer = new RobotstxtServer(robotstxtConfig, pageFetcher);
+		controller = new CrawlController(config, pageFetcher, robotstxtServer);
+		
+		for (String domain : dermPages) {
+			controller.addSeed(domain);
+		}
+		
+		CatalogOfClinicalImagesPageCrawler.configure(crawlDomains, storageFolder);
+		controller.start(CatalogOfClinicalImagesPageCrawler.class, numberOfCrawlers);
 	}
 }

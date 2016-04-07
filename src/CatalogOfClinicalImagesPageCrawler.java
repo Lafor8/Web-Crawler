@@ -12,7 +12,7 @@ import edu.uci.ics.crawler4j.parser.BinaryParseData;
 import edu.uci.ics.crawler4j.parser.HtmlParseData;
 import edu.uci.ics.crawler4j.url.WebURL;
 
-public class CatalogOfClinicalImagesLinksCrawler extends WebCrawler {
+public class CatalogOfClinicalImagesPageCrawler extends WebCrawler {
 	private static final Pattern filters = Pattern.compile(".*(\\.(css|js|mid|mp2|mp3|mp4|wav|avi|mov|mpeg|ram|m4v|pdf" + "|rm|smil|wmv|swf|wma|zip|rar|gz))$");
 
 	private static final Pattern imgPatterns = Pattern.compile(".*(\\.(bmp|gif|jpe?g|png|tiff?))$");

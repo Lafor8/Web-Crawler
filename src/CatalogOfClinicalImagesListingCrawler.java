@@ -1,6 +1,8 @@
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
@@ -17,11 +19,13 @@ import edu.uci.ics.crawler4j.url.WebURL;
 public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 	private static final Pattern filters = Pattern.compile(".*(\\.(css|js|mid|mp2|mp3|mp4|wav|avi|mov|mpeg|ram|m4v|pdf" + "|rm|smil|wmv|swf|wma|zip|rar|gz))$");
 	private static final Pattern skinFilter = Pattern.compile(".*(skin).*");
+	private static final String httpRegex = ".*://";
 
 	private static final Pattern imgPatterns = Pattern.compile(".*(\\.(bmp|gif|jpe?g|png|tiff?))$");
 
 	private static File storageFolder;
 	private static String[] crawlDomains;
+	public static List<String> dermPages;
 
 	public static void configure(String[] domain, String storageFolderName) {
 		crawlDomains = domain;
@@ -35,6 +39,8 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 	@Override
 	public boolean shouldVisit(Page referringPage, WebURL url) {
 		String href = url.getURL().toLowerCase();
+
+		// System.out.println(href);
 		if (filters.matcher(href).matches()) {
 			return false;
 		}
@@ -44,7 +50,9 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 		}
 
 		for (String domain : crawlDomains) {
-			if (href.startsWith(domain)) {
+			// System.out.println(domain);
+			// System.out.println(href.startsWith(domain));
+			if (href.replaceAll(httpRegex, "").startsWith(domain.replaceAll(httpRegex, ""))) {
 				return true;
 			}
 		}
@@ -53,6 +61,7 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 
 	@Override
 	public void visit(Page page) {
+		System.out.println("visiting");
 		String url = page.getWebURL().getURL();
 
 		System.out.println(page.getWebURL().getAnchor());
@@ -90,11 +99,12 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 				// }
 				// System.out.println("Text length: " + text.length());
 				// System.out.println("Html length: " + html.length());
-				// System.out.println("Number of outgoing links: " + links.size());
+				// System.out.println("Number of outgoing links: " +
+				// links.size());
 				// fileWriter.write(html);
 
 				String trimmed = html.substring((html.indexOf("<ul>") + 4), html.indexOf("</ul>")).trim();
-				fileWriter.write(trimmed);
+				// fileWriter.write(trimmed);
 
 				// Scanner scanner = new Scanner(trimmed);
 				// while (scanner.hasNextLine()) {
@@ -102,27 +112,39 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 				//
 				//
 				// System.out.println(line);
-				// System.out.println((line.indexOf("href=\"") + 6)+" "+ line.indexOf("\">"));
-				// // line = line.substring(line.indexOf("href=\"") + 6, line.indexOf("\">")).trim();
+				// System.out.println((line.indexOf("href=\"") + 6)+" "+
+				// line.indexOf("\">"));
+				// // line = line.substring(line.indexOf("href=\"") + 6,
+				// line.indexOf("\">")).trim();
 				// // fileWriter.write(line + "\n");
 				// }
 				// }
 
 				// scanner.close();
 
+				List<String> pages = new ArrayList<>();
+
 				String[] lines = trimmed.split("<li>");
 				for (String line : lines) {
 					if (line.trim().length() > 0) {
-						System.out.println(line);
-						System.out.println((line.indexOf("href=\"") + 6) + " " + line.indexOf("\">"));
+						// System.out.println(line);
+						// System.out.println((line.indexOf("href=\"") + 6) + "
+						// " + line.indexOf("\">"));
 						line = line.substring(line.indexOf("href=\"") + 6, line.indexOf("\">")).trim();
+
+						line = page.getWebURL().getURL().replace("skin.htm", line);
+						pages.add(line);
+
 						fileWriter.write(line + "\n");
 					}
 				}
+				
+				CatalogOfClinicalImagesListingCrawler.dermPages = pages;
 
 				fileWriter.flush();
 				fileWriter.close();
 
+				System.out.println(pages.size() + " pages marked for crawling.");
 				System.out.println("Details written to file.");
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
