@@ -17,15 +17,24 @@ import edu.uci.ics.crawler4j.parser.HtmlParseData;
 import edu.uci.ics.crawler4j.url.WebURL;
 
 public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
-	private static final Pattern filters = Pattern.compile(".*(\\.(css|js|mid|mp2|mp3|mp4|wav|avi|mov|mpeg|ram|m4v|pdf" + "|rm|smil|wmv|swf|wma|zip|rar|gz))$");
-	private static final Pattern skinFilter = Pattern.compile(".*(skin).*");
+
+	// Filters
+	private static final Pattern standardFilters = Pattern.compile(".*(\\.(css|js|mid|mp2|mp3|mp4|wav|avi|mov|mpeg|ram|m4v|pdf" + "|rm|smil|wmv|swf|wma|zip|rar|gz))$");
+	private static final Pattern imgFilters = Pattern.compile(".*(\\.(bmp|gif|jpe?g|png|tiff?))$");
+	private static final Pattern customFilters = Pattern.compile(".*(\\.(cfm))$");
+
+	private static final Pattern pageFilters = Pattern.compile(".*((.*(index|links|credits|browse).*)\\.[A-z]{1,4})$");
+
+	// Regexes
 	private static final String httpRegex = ".*://";
 
-	private static final Pattern imgPatterns = Pattern.compile(".*(\\.(bmp|gif|jpe?g|png|tiff?))$");
-
+	// Initialized parameters
 	private static File storageFolder;
 	private static String[] crawlDomains;
 	public static List<String> dermPages;
+
+	// Counters
+	private static int itemsChecked, standard, img, custom, accepted, wrongPage, wrongDomain, defaulted;
 
 	public static void configure(String[] domain, String storageFolderName) {
 		crawlDomains = domain;
@@ -34,46 +43,81 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 		if (!storageFolder.exists()) {
 			storageFolder.mkdirs();
 		}
+
+		// Custom Initializations
+		itemsChecked = 0;
+		standard = 0;
+		img = 0;
+		custom = 0;
+		wrongPage = 0;
+		wrongDomain = 0;
+		accepted = 0;
+		defaulted = 0;
 	}
 
 	@Override
 	public boolean shouldVisit(Page referringPage, WebURL url) {
 		String href = url.getURL().toLowerCase();
 
-		// System.out.println(href);
-		if (filters.matcher(href).matches()) {
+		itemsChecked++;
+		if (standardFilters.matcher(href).matches()) {
+			standard++;
+			return false;
+		}
+		if (imgFilters.matcher(href).matches()) {
+			img++;
 			return false;
 		}
 
-		if (imgPatterns.matcher(href).matches()) {
+		if (customFilters.matcher(href).matches()) {
+			custom++;
+			return false;
+		}
+
+		if (pageFilters.matcher(href).matches()) {
+			wrongPage++;
 			return false;
 		}
 
 		for (String domain : crawlDomains) {
-			// System.out.println(domain);
-			// System.out.println(href.startsWith(domain));
-			if (href.replaceAll(httpRegex, "").startsWith(domain.replaceAll(httpRegex, ""))) {
-				return true;
+			if (!href.replaceAll(httpRegex, "").split("/")[0].startsWith(domain.replaceAll(httpRegex, "").split("/")[0])) {
+				wrongDomain++;
+				return false;
 			}
 		}
+
+		for (String domain : crawlDomains) {
+			// System.out.println(domain); // https://meded.ucsd.edu/clinicalimg/skin.htm
+			if (href.replaceAll(httpRegex, "").startsWith(domain.replaceAll(httpRegex, ""))) {
+				System.out.println("Seeded: " + href);
+				accepted++;
+				return true;
+			} else {
+				System.out.println("Not Seeded: " + href);
+				return false;
+			}
+		}
+
+		System.out.println(href);
+		defaulted++;
 		return false;
 	}
 
 	@Override
 	public void visit(Page page) {
-		System.out.println("visiting");
+		System.out.println("Visiting: \"" + page.getWebURL().getURL() + "\""); // Visiting "https://meded.ucsd.edu/clinicalimg/skin.htm"
 		String url = page.getWebURL().getURL();
 
-		System.out.println(page.getWebURL().getAnchor());
-		System.out.println(page.getWebURL().getDocid());
-		System.out.println(page.getWebURL().getDomain());
-		System.out.println(page.getWebURL().getParentDocid());
-		System.out.println(page.getWebURL().getParentUrl());
-		System.out.println(page.getWebURL().getPath());
-		System.out.println(page.getWebURL().getSubDomain());
-		System.out.println(page.getWebURL().getTag());
-		System.out.println(page.getWebURL().getURL());
-		System.out.println(page.getWebURL().getURL().replace("skin.htm", ""));
+		// System.out.println(page.getWebURL().getAnchor()); // null
+		// System.out.println(page.getWebURL().getDocid()); // 1
+		// System.out.println(page.getWebURL().getDomain()); // ucsd.edu
+		// System.out.println(page.getWebURL().getParentDocid()); // 0
+		// System.out.println(page.getWebURL().getParentUrl()); // null
+		// System.out.println(page.getWebURL().getPath()); // /clinicalimg/skin.htm
+		// System.out.println(page.getWebURL().getSubDomain()); // meded
+		// System.out.println(page.getWebURL().getTag()); // null
+		// System.out.println(page.getWebURL().getURL()); // https://meded.ucsd.edu/clinicalimg/skin.htm
+		// System.out.println(page.getWebURL().getURL().replace("skin.htm", "")); // https://meded.ucsd.edu/clinicalimg/
 
 		if (page.getParseData() instanceof HtmlParseData) {
 			System.out.println("Data successfully gathered.");
@@ -138,7 +182,7 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 						fileWriter.write(line + "\n");
 					}
 				}
-				
+
 				CatalogOfClinicalImagesListingCrawler.dermPages = pages;
 
 				fileWriter.flush();
@@ -153,7 +197,7 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 		}
 
 		// We are only interested in processing images which are bigger than 10k
-		if (!imgPatterns.matcher(url).matches() || !((page.getParseData() instanceof BinaryParseData) || (page.getContentData().length < (10 * 1024)))) {
+		if (!imgFilters.matcher(url).matches() || !((page.getParseData() instanceof BinaryParseData) || (page.getContentData().length < (10 * 1024)))) {
 			return;
 		}
 
