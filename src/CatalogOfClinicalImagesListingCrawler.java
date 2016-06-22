@@ -8,6 +8,13 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
 import com.google.common.io.Files;
 
 import edu.uci.ics.crawler4j.crawler.Page;
@@ -33,8 +40,16 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 	private static String[] crawlDomains;
 	public static List<String> dermPages;
 
+	// Pages and Depth
+	public static String seedPage = "";
+	public static List<String> transitionPages = new ArrayList<String>();
+	public static List<String> leafPages = new ArrayList<String>();
+
 	// Counters
-	private static int itemsChecked, standard, img, custom, accepted, wrongPage, wrongDomain, defaulted;
+	private static int itemsChecked, standard, imgFiltered, custom, accepted, wrongPage, wrongDomain, defaulted, img;
+	public static int totalImg = 0;
+	public static int totalImgLinked = 0;
+	private static int PAGES = 2;
 
 	public static void configure(String[] domain, String storageFolderName) {
 		crawlDomains = domain;
@@ -45,175 +60,291 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 		}
 
 		// Custom Initializations
-		itemsChecked = 0;
-		standard = 0;
-		img = 0;
-		custom = 0;
-		wrongPage = 0;
-		wrongDomain = 0;
-		accepted = 0;
-		defaulted = 0;
+		clearCounters();
+
+		seedPage = domain[0];
 	}
 
 	@Override
 	public boolean shouldVisit(Page referringPage, WebURL url) {
 		String href = url.getURL().toLowerCase();
+		// System.out.println("Referring Page :" + referringPage.getWebURL().getURL());
 
-		itemsChecked++;
-		if (standardFilters.matcher(href).matches()) {
-			standard++;
-			return false;
-		}
-		if (imgFilters.matcher(href).matches()) {
-			img++;
-			return false;
-		}
+		// Height at 1
+		if (url.getParentUrl().equals(seedPage)) {
+			itemsChecked++;
+			if (standardFilters.matcher(href).matches()) {
+				standard++;
+				return false;
+			}
+			if (imgFilters.matcher(href).matches()) {
+				imgFiltered++;
+				return false;
+			}
 
-		if (customFilters.matcher(href).matches()) {
-			custom++;
-			return false;
-		}
+			if (customFilters.matcher(href).matches()) {
+				custom++;
+				return false;
+			}
 
-		if (pageFilters.matcher(href).matches()) {
-			wrongPage++;
-			return false;
-		}
+			if (pageFilters.matcher(href).matches()) {
+				wrongPage++;
+				return false;
+			}
 
-		for (String domain : crawlDomains) {
-			if (!href.replaceAll(httpRegex, "").split("/")[0].startsWith(domain.replaceAll(httpRegex, "").split("/")[0])) {
+			if (!href.replaceAll(httpRegex, "").split("/")[0].startsWith(seedPage.replaceAll(httpRegex, "").split("/")[0])) {
 				wrongDomain++;
 				return false;
 			}
+
+			accepted++;
+			// if (PAGES-- > 0) {
+			leafPages.add(href);
+			return true;
+			// }
 		}
 
-		for (String domain : crawlDomains) {
-			// System.out.println(domain); // https://meded.ucsd.edu/clinicalimg/skin.htm
-			if (href.replaceAll(httpRegex, "").startsWith(domain.replaceAll(httpRegex, ""))) {
-				System.out.println("Seeded: " + href);
-				accepted++;
+		// Height at 2
+		else if (leafPages.contains(url.getParentUrl())) {
+			if (imgFilters.matcher(href).matches()) {
+				img++;
 				return true;
-			} else {
-				System.out.println("Not Seeded: " + href);
-				return false;
 			}
 		}
 
-		System.out.println(href);
-		defaulted++;
 		return false;
 	}
 
 	@Override
 	public void visit(Page page) {
-		System.out.println("Visiting: \"" + page.getWebURL().getURL() + "\""); // Visiting "https://meded.ucsd.edu/clinicalimg/skin.htm"
+		// System.out.println("Visiting: \"" + page.getWebURL().getURL() + "\""); // Visiting "https://meded.ucsd.edu/clinicalimg/skin.htm"
 		String url = page.getWebURL().getURL();
 
-		// System.out.println(page.getWebURL().getAnchor()); // null
-		// System.out.println(page.getWebURL().getDocid()); // 1
-		// System.out.println(page.getWebURL().getDomain()); // ucsd.edu
-		// System.out.println(page.getWebURL().getParentDocid()); // 0
-		// System.out.println(page.getWebURL().getParentUrl()); // null
-		// System.out.println(page.getWebURL().getPath()); // /clinicalimg/skin.htm
-		// System.out.println(page.getWebURL().getSubDomain()); // meded
-		// System.out.println(page.getWebURL().getTag()); // null
-		// System.out.println(page.getWebURL().getURL()); // https://meded.ucsd.edu/clinicalimg/skin.htm
-		// System.out.println(page.getWebURL().getURL().replace("skin.htm", "")); // https://meded.ucsd.edu/clinicalimg/
+		// Height at 0
+		if (page.getWebURL().getParentUrl() == null) {
+			// System.out.println("Height at 0");
+			if (page.getParseData() instanceof HtmlParseData) {
+				// Retrieve Textual content
+				HtmlParseData htmlParseData = (HtmlParseData) page.getParseData();
+				String text = htmlParseData.getText();
+				String html = htmlParseData.getHtml();
+				Set<WebURL> links = htmlParseData.getOutgoingUrls();
 
-		if (page.getParseData() instanceof HtmlParseData) {
-			System.out.println("Data successfully gathered.");
+				// Saving crawling details
+				File file = new File(storageFolder.getPath() + "/Crawling Details.txt");
+				try {
+					if (!file.exists())
+						file.createNewFile();
 
-			HtmlParseData htmlParseData = (HtmlParseData) page.getParseData();
-			String text = htmlParseData.getText();
-			String html = htmlParseData.getHtml();
-			Set<WebURL> links = htmlParseData.getOutgoingUrls();
+					FileWriter fileWriter = new FileWriter(file);
 
-			File file = new File(storageFolder.getPath() + "/scrap.txt");
-			try {
-				if (!file.exists())
-					file.createNewFile();
-				FileWriter fileWriter = new FileWriter(file);
+					fileWriter.write("itemsChecked = " + itemsChecked + "\r\n");
+					fileWriter.write("standard = " + standard + "\r\n");
+					fileWriter.write("img = " + imgFiltered + "\r\n");
+					fileWriter.write("custom = " + custom + "\r\n");
+					fileWriter.write("wrongPage = " + wrongPage + "\r\n");
+					fileWriter.write("wrongDomain = " + wrongDomain + "\r\n");
+					fileWriter.write("accepted = " + accepted + "\r\n");
+					fileWriter.write("defaulted = " + defaulted + "\r\n");
+					fileWriter.flush();
+					fileWriter.close();
 
-				// for (WebURL link : links) {
-				// if (skinFilter.matcher(link.toString()).matches()) {
+					System.out.println(accepted + " pages marked for crawling.");
+					System.out.println("Details written to file.");
 
-				// System.out.println(link);
-				// fileWriter.write(link + "\n");
-				// CatalogOfClinicalImagesCrawlerController.nestedCrawlDomains.add(link.toString());
-				// }
-				// }
-				// System.out.println("Text length: " + text.length());
-				// System.out.println("Html length: " + html.length());
-				// System.out.println("Number of outgoing links: " +
-				// links.size());
-				// fileWriter.write(html);
-
-				String trimmed = html.substring((html.indexOf("<ul>") + 4), html.indexOf("</ul>")).trim();
-				// fileWriter.write(trimmed);
-
-				// Scanner scanner = new Scanner(trimmed);
-				// while (scanner.hasNextLine()) {
-				// String line = scanner.nextLine();
-				//
-				//
-				// System.out.println(line);
-				// System.out.println((line.indexOf("href=\"") + 6)+" "+
-				// line.indexOf("\">"));
-				// // line = line.substring(line.indexOf("href=\"") + 6,
-				// line.indexOf("\">")).trim();
-				// // fileWriter.write(line + "\n");
-				// }
-				// }
-
-				// scanner.close();
-
-				List<String> pages = new ArrayList<>();
-
-				String[] lines = trimmed.split("<li>");
-				for (String line : lines) {
-					if (line.trim().length() > 0) {
-						// System.out.println(line);
-						// System.out.println((line.indexOf("href=\"") + 6) + "
-						// " + line.indexOf("\">"));
-						line = line.substring(line.indexOf("href=\"") + 6, line.indexOf("\">")).trim();
-
-						line = page.getWebURL().getURL().replace("skin.htm", line);
-						pages.add(line);
-
-						fileWriter.write(line + "\n");
-					}
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
 
-				CatalogOfClinicalImagesListingCrawler.dermPages = pages;
-
-				fileWriter.flush();
-				fileWriter.close();
-
-				System.out.println(pages.size() + " pages marked for crawling.");
-				System.out.println("Details written to file.");
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				// Clearing counters for deeper crawling
+				clearCounters();
 			}
 		}
 
-		// We are only interested in processing images which are bigger than 10k
-		if (!imgFilters.matcher(url).matches() || !((page.getParseData() instanceof BinaryParseData) || (page.getContentData().length < (10 * 1024)))) {
-			return;
+		// Height at 1
+		else if (page.getWebURL().getParentUrl().equals(seedPage)) {
+			// System.out.println("Height at 1");
+			if (page.getParseData() instanceof HtmlParseData) {
+				HtmlParseData htmlParseData = (HtmlParseData) page.getParseData();
+				String text = htmlParseData.getText();
+				String html = htmlParseData.getHtml();
+				Set<WebURL> links = htmlParseData.getOutgoingUrls();
+
+				try {
+
+					// System.out.println("2: " + "writing");
+					String urlSegments[] = page.getWebURL().getPath().split("/");
+					String fileName = urlSegments[urlSegments.length - 1];
+
+					File file = new File(storageFolder.getPath() + "/Text/" + fileName.split("[.]")[0] + "_text.txt");
+
+					if (!file.exists())
+						file.createNewFile();
+					FileWriter fileWriter = new FileWriter(file);
+
+					// Getting HTML Doc
+
+					JSONArray imgArray = new JSONArray();
+					Document doc = Jsoup.parse(html);
+
+					// JSON Writing
+					JSONObject json = new JSONObject();
+
+					// Writing Web URL Info
+					JSONObject webURLInfo = new JSONObject();
+
+					webURLInfo.put("Anchor", page.getWebURL().getAnchor());
+					webURLInfo.put("DocID", page.getWebURL().getDocid());
+					webURLInfo.put("Domain", page.getWebURL().getDomain());
+					webURLInfo.put("ParentDocID", page.getWebURL().getParentDocid());
+					webURLInfo.put("PathURL", page.getWebURL().getParentUrl());
+					webURLInfo.put("Path", page.getWebURL().getPath());
+					webURLInfo.put("SubDomain", page.getWebURL().getSubDomain());
+					webURLInfo.put("Tag", page.getWebURL().getTag());
+					webURLInfo.put("URL", page.getWebURL().getURL());
+					json.put("WebURLInfo", webURLInfo);
+
+					// Writing Image Info
+					JSONObject imgInfo = new JSONObject();
+
+					imgInfo.put("ImageCount", img);
+					Elements images = doc.select("img[src~=(?i)\\.(jpe?g)]");
+					for (Element image : images) {
+						totalImgLinked++;
+						imgArray.put(image.attr("src"));
+					}
+					imgInfo.put("Images", imgArray);
+
+					json.put("ImgInfo", imgInfo);
+
+					// Writing Text Info
+					JSONObject textInfo = new JSONObject();
+
+					Elements paras = doc.select("p");
+					for (Element para : paras) {
+						Elements bolded = para.getElementsByTag("b");
+						if (bolded.size() > 0) {
+							textInfo.put("Diagnosis", bolded.get(0).text());
+							textInfo.put("Description", para.text());
+						}
+					}
+
+					json.put("TextInfo", textInfo);
+
+					fileWriter.write(json.toString(1));
+					fileWriter.write("\r\n");
+
+					img = 0;
+					fileWriter.flush();
+					fileWriter.close();
+
+					logger.info("Stored: {}", url);
+				} catch (IOException iox) {
+					iox.printStackTrace();
+				}
+			}
 		}
 
-		// get a unique name for storing this image
-		String extension = url.substring(url.lastIndexOf('.'));
-		String hashedName = UUID.randomUUID() + extension;
+		// Height at 2
+		else if (leafPages.contains(page.getWebURL().getParentUrl())) {
+			// System.out.println("Height at 2");
+			if (imgFilters.matcher(url.toLowerCase()).matches() && (page.getContentData().length > (10 * 1024))) {
 
-		// store image
-		String filename = storageFolder.getAbsolutePath() + "/" + hashedName;
+				String urlSegments[] = page.getWebURL().getPath().split("/");
+				String fileName = urlSegments[urlSegments.length - 1];
 
-		// try {
-		// Files.write(page.getContentData(), new File(filename));
-		// logger.info("Stored: {}", url);
-		// } catch (IOException iox) {
-		// logger.error("Failed to write file: " + filename, iox);
-		// }
+				String imageFileName = storageFolder.getAbsolutePath() + "/Images/" + fileName;
 
+				try {
+					Files.write(page.getContentData(), new File(imageFileName));
+					totalImg++;
+					System.out.println("Downloaded Image # " + totalImg);
+					logger.info("Stored: {}", url);
+				} catch (IOException iox) {
+					iox.printStackTrace();
+					logger.error("Failed to write file: " + imageFileName, iox);
+				}
+			}
+		}
+	}
+
+	private static void clearCounters() {
+		itemsChecked = 0;
+		standard = 0;
+		imgFiltered = 0;
+		custom = 0;
+		wrongPage = 0;
+		wrongDomain = 0;
+		accepted = 0;
+		defaulted = 0;
+		img = 0;
 	}
 }
+
+// NOTES:
+//
+// Crawling Logic:
+//
+// crawl(givenPage)
+// shouldVisit(givenPage.links)
+// foreach link in givenPage.links
+// if(shouldVisit(link)
+// Pages.add(link)
+// visit(givenPage)
+// foreach page in Pages
+// crawl(page)
+//
+// System.out.println(page.getWebURL().getAnchor()); // null
+// System.out.println(page.getWebURL().getDocid()); // 1
+// System.out.println(page.getWebURL().getDomain()); // ucsd.edu
+// System.out.println(page.getWebURL().getParentDocid()); // 0
+// System.out.println(page.getWebURL().getParentUrl()); // null
+// System.out.println(page.getWebURL().getPath()); // /clinicalimg/skin.htm
+// System.out.println(page.getWebURL().getSubDomain()); // meded
+// System.out.println(page.getWebURL().getTag()); // null
+// System.out.println(page.getWebURL().getURL()); // https://meded.ucsd.edu/clinicalimg/skin.htm
+
+// Visiting: "https://meded.ucsd.edu/clinicalimg/skin.htm"
+// null
+// 1
+// ucsd.edu
+// 0
+// null
+/// clinicalimg/skin.htm
+// meded
+// null
+// https://meded.ucsd.edu/clinicalimg/skin.htm
+// https://meded.ucsd.edu/clinicalimg/
+// 102 pages marked for crawling.
+// Details written to file.
+//
+// __________________________________________________________________________________________________________
+//
+//
+// Visiting: "https://meded.ucsd.edu/clinicalimg/skin_maceration.htm"
+// Macerated skin
+// 2
+// ucsd.edu
+// 1
+// https://meded.ucsd.edu/clinicalimg/skin.htm
+/// clinicalimg/skin_maceration.htm
+// meded
+// null
+// https://meded.ucsd.edu/clinicalimg/skin_maceration.htm
+// https://meded.ucsd.edu/clinicalimg/skin_maceration.htm
+//
+// __________________________________________________________________________________________________________
+//
+//
+// Visiting: "https://meded.ucsd.edu/clinicalimg/skin_stills.htm"
+// Still's Disease
+// 3
+// ucsd.edu
+// 1
+// https://meded.ucsd.edu/clinicalimg/skin.htm
+/// clinicalimg/skin_stills.htm
+// meded
+// null
+// https://meded.ucsd.edu/clinicalimg/skin_stills.htm
+// https://meded.ucsd.edu/clinicalimg/skin_stills.htm

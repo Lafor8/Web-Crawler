@@ -1,3 +1,8 @@
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -31,9 +36,14 @@ public class CatalogOfClinicalImagesCrawlerController {
 		int numberOfCrawlers = Integer.parseInt(args[1]);
 		String storageFolder = args[2];
 
+		// Setting Console output to file
+		// PrintStream out = new PrintStream(new FileOutputStream(new File(storageFolder).getAbsolutePath() + "/console.txt"));
+		// System.setOut(out);
+
 		CrawlConfig config = new CrawlConfig();
 
 		config.setCrawlStorageFolder(rootFolder);
+		config.setMaxDownloadSize(10000000);
 
 		// Since images are binary content,
 		// we need to set this parameter to true to make sure they are included in the crawl.
@@ -41,7 +51,7 @@ public class CatalogOfClinicalImagesCrawlerController {
 
 		String[] crawlDomains = { "https://meded.ucsd.edu/clinicalimg/skin.htm" };
 
-		// II. Crawling all links
+		// II. Preparing crawler
 		PageFetcher pageFetcher = new PageFetcher(config);
 		RobotstxtConfig robotstxtConfig = new RobotstxtConfig();
 		RobotstxtServer robotstxtServer = new RobotstxtServer(robotstxtConfig, pageFetcher);
@@ -55,31 +65,22 @@ public class CatalogOfClinicalImagesCrawlerController {
 		CatalogOfClinicalImagesListingCrawler.configure(crawlDomains, storageFolder);
 		controller.start(CatalogOfClinicalImagesListingCrawler.class, numberOfCrawlers);
 
-		// III. Crawling all Content
-		System.out.println("Starting nested crawling");
+		// Saving Image download details
+		File file = new File(new File(storageFolder).getPath() + "/Crawling Details.txt");
+		try {
+			if (!file.exists())
+				file.createNewFile();
 
-		List<String> dermPages = CatalogOfClinicalImagesListingCrawler.dermPages;
+			FileWriter fileWriter = new FileWriter(file);
 
-		pageFetcher = new PageFetcher(config);
-		robotstxtConfig = new RobotstxtConfig();
-		robotstxtServer = new RobotstxtServer(robotstxtConfig, pageFetcher);
-		controller = new CrawlController(config, pageFetcher, robotstxtServer);
+			fileWriter.append("Images Downloaded = " + CatalogOfClinicalImagesListingCrawler.totalImg + "\r\n");
+			fileWriter.append("Images Linked = " + CatalogOfClinicalImagesListingCrawler.totalImgLinked + "\r\n");
+			fileWriter.flush();
+			fileWriter.close();
 
-		Collections.sort(dermPages);
-
-		System.out.println("Check " + dermPages.size());
-
-		List<String> comp = new ArrayList<>();
-
-		// Seeding all links
-		for (String domain : dermPages.subList(0, 3)) {
-			System.out.println("Adding " + domain);
-			controller.addSeed(domain);
-			comp.add(domain);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-
-		// Running Crawler
-		CatalogOfClinicalImagesPageCrawler.configure(comp, storageFolder);
-		// controller.start(CatalogOfClinicalImagesPageCrawler.class, numberOfCrawlers);
 	}
 }
