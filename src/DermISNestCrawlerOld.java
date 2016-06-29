@@ -12,7 +12,7 @@ import edu.uci.ics.crawler4j.parser.BinaryParseData;
 import edu.uci.ics.crawler4j.parser.HtmlParseData;
 import edu.uci.ics.crawler4j.url.WebURL;
 
-public class DermoscopyAtlasOldCrawler extends WebCrawler {
+public class DermISNestCrawlerOld extends WebCrawler {
 	private static final Pattern filters = Pattern.compile(".*(\\.(css|js|mid|mp2|mp3|mp4|wav|avi|mov|mpeg|ram|m4v|pdf" + "|rm|smil|wmv|swf|wma|zip|rar|gz))$");
 	private static final String httpRegex = ".*://";
 	
@@ -52,6 +52,8 @@ public class DermoscopyAtlasOldCrawler extends WebCrawler {
 	@Override
 	public void visit(Page page) {
 		String url = page.getWebURL().getURL();
+		
+		System.out.println("visiting");
 
 		if (page.getParseData() instanceof HtmlParseData) {
 			HtmlParseData htmlParseData = (HtmlParseData) page.getParseData();
@@ -60,8 +62,8 @@ public class DermoscopyAtlasOldCrawler extends WebCrawler {
 			Set<WebURL> links = htmlParseData.getOutgoingUrls();
 			
 			for(WebURL link : links){
-				if(link.toString().contains("diagdetail")){
-					DermoscopyAtlasCrawlerOldController.nestedCrawlDomains.add(link.toString());
+				if(link.toString().contains("image")){
+					DermISCrawlerControllerOld.nestedTwiceCrawlDomains.add(link.toString());
 //					System.out.println(link);
 				}
 			}
@@ -71,7 +73,7 @@ public class DermoscopyAtlasOldCrawler extends WebCrawler {
 		}
 		
 		// We are only interested in processing images which are bigger than 10k
-		if (!imgPatterns.matcher(url).matches() || !((page.getParseData() instanceof BinaryParseData) || (page.getContentData().length < (10 * 1024)))) {
+		if (!imgPatterns.matcher(url).matches() || !((page.getParseData() instanceof BinaryParseData) || (page.getContentData().length < (1 * 1024)))) {
 			return;
 		}
 
