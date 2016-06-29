@@ -16,11 +16,11 @@ import edu.uci.ics.crawler4j.fetcher.PageFetcher;
 import edu.uci.ics.crawler4j.robotstxt.RobotstxtConfig;
 import edu.uci.ics.crawler4j.robotstxt.RobotstxtServer;
 
-public class CatalogOfClinicalImagesCrawlerController {
+public class DermoscopyAtlasCrawlerController {
 	private static final Logger logger = LoggerFactory.getLogger(MyImageCrawlerController.class);
 
 	public static void main(String[] args) throws Exception {
-		String[] myArgs = { "InterData", "1", "data_catalogOfClinicalImages" };
+		String[] myArgs = { "InterData", "1", "data_dermoscopyAtlas" };
 		args = myArgs;
 
 		if (args.length < 3) {
@@ -49,7 +49,7 @@ public class CatalogOfClinicalImagesCrawlerController {
 		// we need to set this parameter to true to make sure they are included in the crawl.
 		config.setIncludeBinaryContentInCrawling(true);
 
-		String[] crawlDomains = { "https://meded.ucsd.edu/clinicalimg/skin.htm" };
+		String[] crawlDomains = { "http://www.dermoscopyatlas.com/diagindex.cfm" };
 
 		// II. Preparing crawler
 		PageFetcher pageFetcher = new PageFetcher(config);
@@ -62,8 +62,8 @@ public class CatalogOfClinicalImagesCrawlerController {
 		}
 
 		// Running Crawler
-		CatalogOfClinicalImagesCrawler.configure(crawlDomains, storageFolder);
-		controller.start(CatalogOfClinicalImagesCrawler.class, numberOfCrawlers);
+		DermoscopyAtlasCrawler.configure(crawlDomains, storageFolder);
+		controller.start(DermoscopyAtlasCrawler.class, numberOfCrawlers);
 
 		// Saving Image download details
 		File file = new File(new File(storageFolder).getPath() + "/Crawling Details.txt");
@@ -73,8 +73,8 @@ public class CatalogOfClinicalImagesCrawlerController {
 
 			FileWriter fileWriter = new FileWriter(file, true);
 
-			fileWriter.write("Images Downloaded = " + CatalogOfClinicalImagesCrawler.totalImg + "\r\n");
-			fileWriter.write("Images Linked = " + CatalogOfClinicalImagesCrawler.totalImgLinked + "\r\n");
+			fileWriter.write("Images Downloaded = " + DermoscopyAtlasCrawler.totalImg + "\r\n");
+			fileWriter.write("Images Linked = " + DermoscopyAtlasCrawler.totalImgLinked + "\r\n");
 			fileWriter.flush();
 			fileWriter.close();
 

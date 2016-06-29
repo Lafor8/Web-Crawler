@@ -23,11 +23,11 @@ import edu.uci.ics.crawler4j.parser.BinaryParseData;
 import edu.uci.ics.crawler4j.parser.HtmlParseData;
 import edu.uci.ics.crawler4j.url.WebURL;
 
-public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
+public class DermoscopyAtlasCrawler extends WebCrawler {
 
 	// Filters
 	private static final Pattern standardFilters = Pattern.compile(".*(\\.(css|js|mid|mp2|mp3|mp4|wav|avi|mov|mpeg|ram|m4v|pdf" + "|rm|smil|wmv|swf|wma|zip|rar|gz))$");
-	private static final Pattern imgFilters = Pattern.compile(".*(\\.(bmp|gif|jpe?g|png|tiff?))$");
+	private static final Pattern imgFilters = Pattern.compile(".*(\\.(bmp|jpe?g|png|tiff?))$");
 	private static final Pattern customFilters = Pattern.compile(".*(\\.(cfm))$");
 
 	private static final Pattern pageFilters = Pattern.compile(".*((.*(index|links|credits|browse).*)\\.[A-z]{1,4})$");
@@ -49,7 +49,7 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 	private static int itemsChecked, standard, imgFiltered, custom, accepted, wrongPage, wrongDomain, defaulted, img;
 	public static int totalImg = 0;
 	public static int totalImgLinked = 0;
-	private static int PAGES = 2;
+	private static int PAGES = 10000, PAGES2 = 10000;
 
 	public static void configure(String[] domain, String storageFolderName) {
 		crawlDomains = domain;
@@ -62,7 +62,7 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 		// Custom Initializations
 		clearCounters();
 
-		seedPage = domain[0];
+		seedPage = domain[0].toLowerCase();
 	}
 
 	@Override
@@ -72,6 +72,7 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 
 		// Height at 1
 		if (url.getParentUrl().equals(seedPage)) {
+
 			itemsChecked++;
 			if (standardFilters.matcher(href).matches()) {
 				standard++;
@@ -98,20 +99,79 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 			}
 
 			accepted++;
-			// if (PAGES-- > 0) {
-			leafPages.add(href);
-			return true;
-			// }
+			if (PAGES-- > 0) {
+				// System.out.println("VALID @ Height 1:\t" + href);
+				transitionPages.add(href);
+				return true;
+			} else
+				return false;
 		}
 
 		// Height at 2
-		else if (leafPages.contains(url.getParentUrl())) {
-			if (imgFilters.matcher(href).matches()) {
-				img++;
-				return true;
+		else if (transitionPages.contains(url.getParentUrl().toLowerCase())) {
+			// System.out.println("\t\t" + url.getAnchor());
+			// System.out.println("\t\t" + url.getDepth());
+			// System.out.println("\t\t" + url.getDocid());
+			// System.out.println("\t\t" + url.getDomain());
+			// System.out.println("\t\t" + url.getParentDocid());
+			// System.out.println("\t\t" + url.getParentUrl());
+			// System.out.println("\t\t" + url.getPath());
+			// System.out.println("\t\t" + url.getPriority());
+			// System.out.println("\t\t" + url.getSubDomain());
+			// System.out.println("\t\t" + url.getTag());
+			// System.out.println("\t\t" + url.getURL());
+
+			itemsChecked++;
+			if (standardFilters.matcher(href).matches()) {
+				// System.out.println("standard:\t " + href);
+				standard++;
+				return false;
 			}
+			if (imgFilters.matcher(href).matches()) {
+				// System.out.println("img:\t " + href);
+				if (PAGES2-- > 0) {
+					img++;
+					return true;
+				} else
+					return false;
+			}
+
+			if (customFilters.matcher(href).matches()) {
+				// System.out.println("custom:\t " + href);
+				custom++;
+				return false;
+			}
+
+			if (pageFilters.matcher(href).matches()) {
+				// System.out.println("page:\t " + href);
+				wrongPage++;
+				return false;
+			}
+
+			if (!href.replaceAll(httpRegex, "").split("/")[0].startsWith(seedPage.replaceAll(httpRegex, "").split("/")[0])) {
+				// System.out.println("domain:\t " + href);
+				wrongDomain++;
+				return false;
+			}
+
+			accepted++;
+			// System.out.println("VALID @ Height 2:\t " + href);
+			leafPages.add(href);
+			return true;
+		}
+		// Height at 3
+		else if (leafPages.contains(url.getParentUrl().toLowerCase())) {
+			// DO NOTHING
+			// System.out.println("FOUND @ Height 3:\t " + href);
+			// if (imgFilters.matcher(href).matches()) {
+			// System.out.println("VALID @ Height 3:\t " + href);
+			// img++;
+			// return true;
+			// }
+			return false;
 		}
 
+		System.out.println("Defaulted " + url.getURL() + "\t" + url.getParentUrl());
 		return false;
 	}
 
@@ -163,9 +223,52 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 		}
 
 		// Height at 1
-		else if (page.getWebURL().getParentUrl().equals(seedPage)) {
-			// System.out.println("Height at 1");
-			if (page.getParseData() instanceof HtmlParseData) {
+		else if (page.getWebURL().getParentUrl().toLowerCase().equals(seedPage)) {
+			// System.out.println("Height at 1 " + url);
+
+		}
+
+		// Height at 2
+		else if (transitionPages.contains(page.getWebURL().getParentUrl().toLowerCase())) {
+			// System.out.println("Height at 2");
+			if (imgFilters.matcher(url.toLowerCase()).matches() && page.getParseData() instanceof BinaryParseData) {
+
+				if ((page.getContentData().length > (1 * 1024))) {
+
+					// System.out.println("SAVING IMAGE");
+					WebURL largeImgUrl = new WebURL();
+					String largeImgUrlStr = page.getWebURL().getURL().replace("th", "lg");
+					largeImgUrl.setURL(page.getWebURL().getURL().replace("th", "lg"));
+					Page largeImgPage = new Page(largeImgUrl);
+
+					String urlSegments[] = largeImgPage.getWebURL().getURL().split("/");
+					String fileName = urlSegments[urlSegments.length - 1];
+
+					File fileDir = new File(storageFolder.getPath() + "\\Images\\");
+					fileDir.mkdirs();
+					String imageFileName = fileDir.getPath() + "\\" + fileName;
+
+					// System.out.println("CHECK " + imageFileName);
+
+					// System.out.println("CHECK " + largeImgPage.getContentData());
+					try {
+						Utils.saveImage(largeImgUrlStr, imageFileName);
+						// Files.write(largeImgPage.getContentData(), new File(imageFileName));
+
+						totalImg++;
+						System.out.println("Downloaded Image # " + totalImg + " " + imageFileName);
+						logger.info("Stored: {}", url);
+					} catch (IOException iox) {
+
+						System.out.println("ERROR: Downloading Image: " + imageFileName);
+						iox.printStackTrace();
+						logger.error("Failed to write file: " + imageFileName, iox);
+					}
+				} else {
+					System.out.println("ERROR ERROR ERROR ERROR ERROR");
+				}
+
+			} else if (page.getParseData() instanceof HtmlParseData) {
 				HtmlParseData htmlParseData = (HtmlParseData) page.getParseData();
 				String text = htmlParseData.getText();
 				String html = htmlParseData.getHtml();
@@ -173,15 +276,34 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 
 				try {
 
-					// System.out.println("2: " + "writing");
-					String urlSegments[] = page.getWebURL().getPath().split("/");
-					String fileName = urlSegments[urlSegments.length - 1];
+					// System.out.println("\t\t" + page.getWebURL().getAnchor());
+					// System.out.println("\t\t" + page.getWebURL().getDepth());
+					// System.out.println("\t\t" + page.getWebURL().getDocid());
+					// System.out.println("\t\t" + page.getWebURL().getDomain());
+					// System.out.println("\t\t" + page.getWebURL().getParentDocid());
+					// System.out.println("\t\t" + page.getWebURL().getParentUrl());
+					// System.out.println("\t\t" + page.getWebURL().getPath());
+					// System.out.println("\t\t" + page.getWebURL().getPriority());
+					// System.out.println("\t\t" + page.getWebURL().getSubDomain());
+					// System.out.println("\t\t" + page.getWebURL().getTag());
+					// System.out.println("\t\t" + page.getWebURL().getURL());
 
-					File file = new File(storageFolder.getPath() + "/Text/" + fileName.split("[.]")[0] + "_text.txt");
+					// TODO: Change getPath to getURL
+					// System.out.println("2: " + "writing");
+					String urlSegments[] = page.getWebURL().getURL().split("/");
+					String fileName = urlSegments[urlSegments.length - 1].replaceAll("[^a-zA-Z0-9]", "_");
+
+					File fileDir = new File(storageFolder.getPath() + "/Text/");
+					fileDir.mkdirs();
+					File file = new File(fileDir.getPath() + "\\" + fileName.split("[.]")[0] + "_text.txt");
+
+					// System.out.println("TEXT: " + fileDir.getPath() + "\\" + fileName.split("[.]")[0] + "_text.txt");
 
 					if (!file.exists())
 						file.createNewFile();
 					FileWriter fileWriter = new FileWriter(file);
+
+					// System.out.println("File created");
 
 					// Getting HTML Doc
 
@@ -208,11 +330,18 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 					// Writing Image Info
 					JSONObject imgInfo = new JSONObject();
 
-					imgInfo.put("ImageCount", img);
-					Elements images = doc.select("img[src~=(?i)\\.(jpe?g)]");
-					for (Element image : images) {
+					String imgId = page.getWebURL().getURL().toLowerCase();
+					imgId = imgId.split("imageid=")[1].split("&")[0];
+
+					imgInfo.put("ImageCount", 1);
+					Element image = doc.getElementById("pointer" + imgId);
+					if (image != null) {
 						totalImgLinked++;
-						imgArray.put(image.attr("src"));
+						String imgSrc = image.attr("style");
+						imgSrc = imgSrc.split("'")[1].split("'")[0];
+						imgArray.put(imgSrc);
+					} else {
+						System.out.println(imgId + " NOT FOUND " + "pointer" + imgId);
 					}
 					imgInfo.put("Images", imgArray);
 
@@ -221,17 +350,52 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 					// Writing Text Info
 					JSONObject textInfo = new JSONObject();
 
-					Elements paras = doc.select("p");
-					for (Element para : paras) {
-						Elements bolded = para.getElementsByTag("b");
-						if (bolded.size() > 0) {
-							textInfo.put("Diagnosis", bolded.get(0).text());
-							textInfo.put("Description", para.text());
+					Elements paras = doc.select("table").get(2).select("td");
+					Element curr;
+
+					// Details
+					curr = paras.get(5).clone();
+
+					for (Element formElm : curr.select("form"))
+						formElm.remove();
+					for (Element aElm : curr.select("a"))
+						aElm.remove();
+					for (Element brElm : curr.select("br"))
+						brElm.remove();
+
+					// System.out.println(curr.html());
+
+					{
+						String[] htmlSegments = curr.html().split("</strong>");
+						int i = 1;
+						for (Element strongElm : curr.select("strong")) {
+							textInfo.put(strongElm.text().replaceAll("[^A-z0-9-_ ]", "").trim(), htmlSegments[i].split("<strong>")[0].replaceAll("[^A-z0-9-_ ]", "").trim());
+							i++;
 						}
 					}
 
+					// Description
+					curr = paras.get(6);
+					textInfo.put("Description", curr.text().trim());
+
+					// Links
+					curr = paras.get(7);
+					// System.out.println(curr.html());
+					{
+						JSONArray linksJSON = new JSONArray();
+						for (Element linkElm : curr.select("a")) {
+							linksJSON.put("http://www.dermoscopyatlas.com/" + linkElm.attr("href"));
+						}
+						textInfo.put("Links", linksJSON);
+					}
+
+					// History
+					curr = paras.get(8);
+					textInfo.put("History", curr.text().trim());
+
 					json.put("TextInfo", textInfo);
 
+					// System.out.println("Writing to file");
 					fileWriter.write(json.toString(1));
 					fileWriter.write("\r\n");
 
@@ -246,26 +410,12 @@ public class CatalogOfClinicalImagesListingCrawler extends WebCrawler {
 			}
 		}
 
-		// Height at 2
-		else if (leafPages.contains(page.getWebURL().getParentUrl())) {
-			// System.out.println("Height at 2");
-			if (imgFilters.matcher(url.toLowerCase()).matches() && (page.getContentData().length > (10 * 1024))) {
+		// Height at 3
+		else if (leafPages.contains(page.getWebURL().getParentUrl().toLowerCase()))
 
-				String urlSegments[] = page.getWebURL().getPath().split("/");
-				String fileName = urlSegments[urlSegments.length - 1];
-
-				String imageFileName = storageFolder.getAbsolutePath() + "/Images/" + fileName;
-
-				try {
-					Files.write(page.getContentData(), new File(imageFileName));
-					totalImg++;
-					System.out.println("Downloaded Image # " + totalImg);
-					logger.info("Stored: {}", url);
-				} catch (IOException iox) {
-					iox.printStackTrace();
-					logger.error("Failed to write file: " + imageFileName, iox);
-				}
-			}
+		{
+			// DO NOTHING
+			// System.out.println("Height at 3");
 		}
 	}
 
