@@ -17,7 +17,7 @@ import edu.uci.ics.crawler4j.robotstxt.RobotstxtConfig;
 import edu.uci.ics.crawler4j.robotstxt.RobotstxtServer;
 
 public class DermoscopyAtlasCrawlerController {
-	private static final Logger logger = LoggerFactory.getLogger(MyImageCrawlerController.class);
+	private static final Logger logger = LoggerFactory.getLogger(DermoscopyAtlasCrawlerController.class);
 
 	public static void main(String[] args) throws Exception {
 		String[] myArgs = { "InterData", "1", "data_dermoscopyAtlas" };
