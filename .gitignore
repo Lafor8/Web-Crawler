@@ -17,6 +17,10 @@ hs_err_pid*
 /data_dermoscopyAtlas/
 /data_dermNetNZ/
 /data_catalogOfClinicalImages/
+/data_globalSkinAtlas/
+
+# Json Folders
+/src/org/json/
 
 # Scrap Data Folders
 /Data/
