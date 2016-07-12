@@ -13,23 +13,38 @@ import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-public class JSONCustomReader {
+public class CatalogOfClinicalImagesJSONReader {
 	public static void main(String args[]) throws IOException {
+		run();
+	}
+
+	public static void run() throws IOException {
 		File dir = new File("data_catalogOfClinicalImages");
 		File imgDir = new File(dir.getPath() + "\\Images");
 		File txtDir = new File(dir.getPath() + "\\Text");
 
+		String directory;
+		String name;
+		String seedUrl;
+
+		String rawTextInfo;
+
 		String pathUrl;
 		String url;
+		String anchor;
 
 		List<String> path = new ArrayList<String>();
-		String directory;
 
 		String description;
 		String diagnosis;
 
 		directory = imgDir.getPath();
 		System.out.println(directory);
+		name = "Catalog of Clinical Images";
+		System.out.println(name);
+		seedUrl = "https://meded.ucsd.edu/clinicalimg/skin.htm";
+		System.out.println(seedUrl);
+
 		System.out.println();
 
 		for (String fileName : txtDir.list()) {
@@ -37,6 +52,9 @@ public class JSONCustomReader {
 			JSONObject webUrlInfo = (JSONObject) jsonObj.get("WebURLInfo");
 			JSONObject imgInfo = (JSONObject) jsonObj.get("ImgInfo");
 			JSONObject txtInfo = (JSONObject) jsonObj.get("TextInfo");
+
+			// rawTextInfo = jsonObj.toString();
+			// System.out.println(rawTextInfo);
 
 			// String imgFileName = img.toString().split("/")[4].split("\"")[0];
 
@@ -46,8 +64,12 @@ public class JSONCustomReader {
 			// url = "";
 			// url = webUrlInfo.getString("URL");
 
+			// anchor = "";
+			// anchor = webUrlInfo.getString("Anchor").replaceAll("[\\s]+", " ");
+
 			// System.out.println(pathUrl);
 			// System.out.println(url);
+			// System.out.println(anchor);
 
 			// JSONArray imgList = (JSONArray) imgInfo.get("Images");
 			// String img;
@@ -82,7 +104,7 @@ public class JSONCustomReader {
 			// System.out.println(diagnosis);
 			// System.out.println(description);
 
-			// System.out.println();
+			System.out.println();
 		}
 	}
 

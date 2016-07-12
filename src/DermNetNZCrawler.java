@@ -28,13 +28,13 @@ public class DermNetNZCrawler extends WebCrawler {
 
 	// Filters
 	private static final Pattern standardFilters = Pattern.compile(".*(\\.(css|js|mid|mp2|mp3|mp4|wav|avi|mov|mpeg|ram|m4v|pdf" + "|rm|smil|wmv|swf|wma|zip|rar|gz))$");
-	private static final Pattern imgFilters = Pattern.compile(".*(\\.(bmp|gif|ico|jpe?g|png|tiff?))$");
+	private static final Pattern imgFilters = Pattern.compile(".*(\\.(bmp|ico|jpe?g|png|tiff?))$");
 	private static final Pattern customFilters = Pattern.compile(".*(\\.(cfm))$");
 
 	private static final Pattern pageFilters = Pattern.compile(".*((.*(index|links|credits|browse|search).*)\\.[A-z]{1,4})$");
-	private static final Pattern transitionPageFilters = Pattern.compile(".*((.*(diagnose).*)\\.[A-z]{1,4})$");
+	private static final Pattern customPageFilters = Pattern.compile(".*/(site-age-specific)/.*");
 
-	private static final Pattern imgDownloadFilters = Pattern.compile(".*/550px/.*");
+	private static final Pattern imagePageFilters = Pattern.compile(".*/common/image\\.php.*");
 
 	// Regexes
 	private static final String httpRegex = ".*://";
@@ -53,7 +53,7 @@ public class DermNetNZCrawler extends WebCrawler {
 	private static int itemsChecked, standard, imgFiltered, custom, accepted, wrongPage, wrongDomain, defaulted, img;
 	public static int totalImg = 0;
 	public static int totalImgLinked = 0;
-	private static int PAGES = 100000, PAGES2 = 100000;
+	private static int PAGES = 10000, PAGES2 = 10000;
 
 	public static void configure(String[] domain, String storageFolderName) {
 		crawlDomains = domain;
@@ -102,22 +102,33 @@ public class DermNetNZCrawler extends WebCrawler {
 				return false;
 			}
 
+			if (customPageFilters.matcher(href).matches()) {
+				wrongPage++;
+				return false;
+			}
+
 			if (PAGES-- > 0) {
 				// System.out.println("VALID @ Height 1:\t" + href);
 
-				Pattern pattern = Pattern.compile("([0-9]+) images");
-				Matcher matcher = pattern.matcher(url.getAnchor());
-				matcher.find();
-
-				int number = Integer.parseInt(matcher.group(1));
-
-				if (number > 0) {
-					// System.out.println("VALID @ Height 1:\t" + href + " " + number);
-					accepted++;
-					transitionPages.add(href);
-					return true;
-				} else
+				if (href.split("/").length < 5) {
+					wrongPage++;
 					return false;
+				}
+
+				// Pattern pattern = Pattern.compile("([0-9]+) images");
+				// Matcher matcher = pattern.matcher(url.getAnchor());
+				// matcher.find();
+				//
+				// int number = Integer.parseInt(matcher.group(1));
+				//
+				// if (number > 0) {
+				// System.out.println("VALID @ Height 1:\t" + href + " " + number);
+				// System.out.println("VALID @ Height 1:\t" + href);
+				accepted++;
+				transitionPages.add(href);
+				return true;
+				// } else
+				// return false;
 			} else
 				return false;
 		}
@@ -131,11 +142,11 @@ public class DermNetNZCrawler extends WebCrawler {
 				standard++;
 				return false;
 			}
-			if (imgFilters.matcher(href).matches()) {
-				// System.out.println("img:\t " + href);
-				img++;
-				return false;
-			}
+			// if (imgFilters.matcher(href).matches()) {
+			// // System.out.println("img:\t " + href);
+			// img++;
+			// return false;
+			// }
 
 			if (customFilters.matcher(href).matches()) {
 				// System.out.println("custom:\t " + href);
@@ -155,23 +166,39 @@ public class DermNetNZCrawler extends WebCrawler {
 				return false;
 			}
 
-			if (transitionPageFilters.matcher(href).matches()) {
-				// System.out.println("page:\t " + href);
-				wrongPage++;
-				return false;
+			// if (transitionPageFilters.matcher(href).matches()) {
+			// // System.out.println("page:\t " + href);
+			// wrongPage++;
+			// return false;
+			// }
+			//
+
+			if (imgFilters.matcher(href).matches() && imagePageFilters.matcher(href).matches()) {
+				// System.out.println("img:\t " + href);
+				img++;
+				accepted++;
+				// System.out.println("VALID @ Height 2:\t " + href);
+				leafPages.add(href);
+				return true;
 			}
 
-			accepted++;
-			// System.out.println("VALID @ Height 2:\t " + href);
-			leafPages.add(href);
-			return true;
+			return false;
 		}
 		// Height at 3
 		else if (leafPages.contains(url.getParentUrl().toLowerCase())) {
-			if (imgFilters.matcher(href).matches() && imgDownloadFilters.matcher(href).matches()) {
+			// if (imgFilters.matcher(href).matches() && imgDownloadFilters.matcher(href).matches()) {
 
-				// System.out.println("VALID @ Height 3:\t " + href);
+			// System.out.println("VALID @ Height 3:\t " + href);
+			// img++;
+			// return true;
+			// }
+
+			if (imgFilters.matcher(href).matches()) {
+				// System.out.println("img:\t " + href);
 				img++;
+				accepted++;
+				// System.out.println("VALID @ Height 3:\t " + href);
+				leafPages.add(href);
 				return true;
 			}
 
@@ -180,6 +207,7 @@ public class DermNetNZCrawler extends WebCrawler {
 
 		System.out.println("Defaulted " + url.getURL() + "\t" + url.getParentUrl());
 		return false;
+
 	}
 
 	@Override
@@ -231,7 +259,7 @@ public class DermNetNZCrawler extends WebCrawler {
 
 		// Height at 1
 		else if (page.getWebURL().getParentUrl().toLowerCase().equals(seedPage)) {
-			// System.out.println("Height at 1 " + url);
+//			System.out.println("Height at 1 " + url);
 
 			HtmlParseData htmlParseData = (HtmlParseData) page.getParseData();
 			String text = htmlParseData.getText();
@@ -240,9 +268,9 @@ public class DermNetNZCrawler extends WebCrawler {
 
 			try {
 				String urlSegments[] = page.getWebURL().getURL().split("/");
-				String fileName = urlSegments[urlSegments.length - 2];
+				String fileName = urlSegments[urlSegments.length - 2] + "_" + urlSegments[urlSegments.length - 1].split("[.]")[0];
 
-				File fileDir = new File(storageFolder.getPath() + "/Diagnosis/");
+				File fileDir = new File(storageFolder.getPath() + "/Text/");
 				fileDir.mkdirs();
 				File file = new File(fileDir.getPath() + "\\" + fileName + "_text.txt");
 
@@ -275,12 +303,12 @@ public class DermNetNZCrawler extends WebCrawler {
 				JSONObject imgInfo = new JSONObject();
 				JSONArray imgArray = new JSONArray();
 
-				Elements images = doc.getElementById("ctl00_Main_pnlImages").select("img");
+				Elements images = doc.getElementsByClass("images").select("a");
 
 				for (Element image : images) {
 					totalImgLinked++;
-					String imgSrc = image.attr("src");
-					imgSrc = "http://www.dermis.net" + imgSrc.replace("100px", "550px");
+					String imgSrc = image.attr("href");
+					imgSrc = "http://www.dermnetnz.org" + imgSrc.split("=")[1];
 					imgArray.put(imgSrc);
 				}
 
@@ -292,34 +320,7 @@ public class DermNetNZCrawler extends WebCrawler {
 				// Writing Text Info
 				JSONObject textInfo = new JSONObject();
 
-				// Diagnosis
-				String diag = doc.getElementsByTag("title").first().text();
-				diag = diag.replace("DermIS -", "");
-				diag = diag.replace("(information on the diagnosis)", "");
-
-				textInfo.put("Diagnosis", diag.trim());
-
-				// Details
-
-				// Definition
-				diag = doc.getElementById("ctl00_Main_pnlDefinition").text();
-				diag = diag.replace("definition", "");
-
-				textInfo.put("Definition", diag.trim());
-
-				// Synonym
-				diag = doc.getElementById("ctl00_Main_pnlSynonyms").text();
-				diag = diag.replace("synonyms", "");
-
-				textInfo.put("Synonyms", diag.trim());
-
-				// UML
-				if (doc.getElementById("ctl00_Main_pnlUmlsTerms") != null) {
-					diag = doc.getElementById("ctl00_Main_pnlUmlsTerms").text();
-					diag = diag.replace("UMLS", "");
-
-					textInfo.put("UMLs", diag.trim());
-				}
+				textInfo.put("Content", doc.getElementById("content").text());
 
 				json.put("TextInfo", textInfo);
 
@@ -338,131 +339,6 @@ public class DermNetNZCrawler extends WebCrawler {
 
 		// Height at 2
 		else if (transitionPages.contains(page.getWebURL().getParentUrl().toLowerCase())) {
-			// System.out.println("Height at 2");
-
-			HtmlParseData htmlParseData = (HtmlParseData) page.getParseData();
-			String text = htmlParseData.getText();
-			String html = htmlParseData.getHtml();
-			Set<WebURL> links = htmlParseData.getOutgoingUrls();
-
-			try {
-				String urlSegments[] = page.getWebURL().getURL().split("/");
-				String fileName = urlSegments[urlSegments.length - 2];
-
-				File fileDir = new File(storageFolder.getPath() + "/Text/");
-				fileDir.mkdirs();
-				File file = new File(fileDir.getPath() + "\\" + fileName + "_text.txt");
-
-				if (!file.exists())
-					file.createNewFile();
-				FileWriter fileWriter = new FileWriter(file);
-
-				// Getting HTML Doc
-
-				JSONArray imgArray = new JSONArray();
-				Document doc = Jsoup.parse(html);
-
-				// JSON Writing
-				JSONObject json = new JSONObject();
-
-				// Writing Web URL Info
-				JSONObject webURLInfo = new JSONObject();
-
-				webURLInfo.put("Anchor", page.getWebURL().getAnchor());
-				webURLInfo.put("DocID", page.getWebURL().getDocid());
-				webURLInfo.put("Domain", page.getWebURL().getDomain());
-				webURLInfo.put("ParentDocID", page.getWebURL().getParentDocid());
-				webURLInfo.put("PathURL", page.getWebURL().getParentUrl());
-				webURLInfo.put("Path", page.getWebURL().getPath());
-				webURLInfo.put("SubDomain", page.getWebURL().getSubDomain());
-				webURLInfo.put("Tag", page.getWebURL().getTag());
-				webURLInfo.put("URL", page.getWebURL().getURL());
-				json.put("WebURLInfo", webURLInfo);
-
-				// Writing Image Info
-				JSONObject imgInfo = new JSONObject();
-
-				imgInfo.put("ImageCount", 1);
-
-				Element image = doc.getElementsByClass("zoom").first().select("img").first();
-
-				String imgSrc = image.attr("src");
-				imgSrc = "http://www.dermis.net" + imgSrc;
-				imgArray.put(imgSrc);
-
-				imgInfo.put("Images", imgArray);
-
-				json.put("ImgInfo", imgInfo);
-
-				// Writing Text Info
-				JSONObject textInfo = new JSONObject();
-
-				// Diagnosis
-				String diag = doc.getElementsByTag("title").first().text();
-				diag = diag.replace("DermIS -", "");
-				diag = diag.replace("\n (image)", "");
-
-				textInfo.put("Diagnosis", diag.trim());
-
-				JSONArray diagArr = new JSONArray();
-				JSONArray localArr = new JSONArray();
-				JSONArray lesionArr = new JSONArray();
-				JSONArray descArr = new JSONArray();
-
-				Elements rows = doc.getElementsByClass("descriptions").first().select("tr").clone();
-
-				for (Element row : rows) {
-					if (!row.className().equals("grdHeader")) {
-						diagArr.put(row.child(0).text());
-						localArr.put(row.child(1).text());
-						lesionArr.put(row.child(2).text());
-						descArr.put(row.child(3).text());
-					}
-				}
-
-				textInfo.put("Diagnoses", diagArr);
-				textInfo.put("Localizations", localArr);
-				textInfo.put("Morphologies", lesionArr);
-				textInfo.put("Descriptions", descArr);
-
-				// Patient Info
-				String str;
-
-				// Sex
-				if (doc.getElementById("ctl00_Main_lblPatientSex") != null) {
-					str = doc.getElementById("ctl00_Main_lblPatientSex").text();
-
-					textInfo.put("Sex", str.trim());
-				}
-
-				// Age
-				if (doc.getElementById("ctl00_Main_lblPatientAge") != null) {
-					str = doc.getElementById("ctl00_Main_lblPatientAge").text();
-
-					textInfo.put("Age", (int) Math.abs(Integer.parseInt(str.trim())));
-				}
-
-				// Race
-				if (doc.getElementById("ctl00_Main_lblPatientRace") != null) {
-					str = doc.getElementById("ctl00_Main_lblPatientRace").text();
-
-					textInfo.put("Race", str.trim());
-				}
-
-				json.put("TextInfo", textInfo);
-
-				// System.out.println("Writing to file");
-				fileWriter.write(json.toString(1));
-				fileWriter.write("\r\n");
-
-				img = 0;
-				fileWriter.flush();
-				fileWriter.close();
-
-				logger.info("Stored: {}", url);
-			} catch (IOException iox) {
-				iox.printStackTrace();
-			}
 
 		}
 
@@ -470,24 +346,26 @@ public class DermNetNZCrawler extends WebCrawler {
 		else if (leafPages.contains(page.getWebURL().getParentUrl().toLowerCase())) {
 			// System.out.println("Height at 3");
 
-			String urlSegments[] = page.getWebURL().getPath().split("/");
-			String fileName = urlSegments[urlSegments.length - 3] + "_" + urlSegments[urlSegments.length - 1];
+			if (page.getParseData() instanceof BinaryParseData) {
+				String urlSegments[] = page.getWebURL().getPath().split("/");
+				String fileName = urlSegments[urlSegments.length - 1];
 
-			File fileDir = new File(storageFolder.getPath() + "\\Images\\");
-			fileDir.mkdirs();
-			String imageFileName = fileDir.getPath() + "\\" + fileName;
+				File fileDir = new File(storageFolder.getPath() + "\\Images\\");
+				fileDir.mkdirs();
+				String imageFileName = fileDir.getPath() + "\\" + fileName;
 
-			try {
-				Files.write(page.getContentData(), new File(imageFileName));
+				try {
+					Files.write(page.getContentData(), new File(imageFileName));
 
-				totalImg++;
-				System.out.println("Downloaded Image # " + totalImg + " " + imageFileName);
-				logger.info("Stored: {}", url);
-			} catch (IOException iox) {
+					totalImg++;
+					System.out.println("Downloaded Image # " + totalImg + " " + imageFileName);
+					logger.info("Stored: {}", url);
+				} catch (IOException iox) {
 
-				System.out.println("ERROR: Downloading Image: " + imageFileName);
-				iox.printStackTrace();
-				logger.error("Failed to write file: " + imageFileName, iox);
+					System.out.println("ERROR: Downloading Image: " + imageFileName);
+					iox.printStackTrace();
+					logger.error("Failed to write file: " + imageFileName, iox);
+				}
 			}
 		}
 	}

@@ -20,7 +20,7 @@ public class DermNetNZCrawlerController {
 	private static final Logger logger = LoggerFactory.getLogger(DermNetNZCrawlerController.class);
 
 	public static void main(String[] args) throws Exception {
-		String[] myArgs = { "InterData", "1", "data_dermIS" };
+		String[] myArgs = { "InterData", "1", "data_dermNetNZ" };
 		args = myArgs;
 
 		if (args.length < 3) {
@@ -45,7 +45,9 @@ public class DermNetNZCrawlerController {
 		// we need to set this parameter to true to make sure they are included in the crawl.
 		config.setIncludeBinaryContentInCrawling(true);
 
-		String[] crawlDomains = { "http://www.dermis.net/dermisroot/en/list/all/search.htm" };
+		// String[] crawlDomains = { "http://www.dermnetnz.org/img/catalogue.html" };
+		// String[] crawlDomains = { "http://www.dermnetnz.org/sitemap.html" };
+		String[] crawlDomains = { "http://www.dermnetnz.org/lesions/index.html" };
 
 		// II. Preparing crawler
 		PageFetcher pageFetcher = new PageFetcher(config);
@@ -58,8 +60,8 @@ public class DermNetNZCrawlerController {
 		}
 
 		// Running Crawler
-		DermISCrawler.configure(crawlDomains, storageFolder);
-		controller.start(DermISCrawler.class, numberOfCrawlers);
+		DermNetNZCrawler.configure(crawlDomains, storageFolder);
+		controller.start(DermNetNZCrawler.class, numberOfCrawlers);
 
 		// Saving Image download details
 		File file = new File(new File(storageFolder).getPath() + "/Crawling Details.txt");
@@ -69,8 +71,8 @@ public class DermNetNZCrawlerController {
 
 			FileWriter fileWriter = new FileWriter(file, true);
 
-			fileWriter.write("Images Downloaded = " + DermISCrawler.totalImg + "\r\n");
-			fileWriter.write("Images Linked = " + DermISCrawler.totalImgLinked + "\r\n");
+			fileWriter.write("Images Downloaded = " + DermNetNZCrawler.totalImg + "\r\n");
+			fileWriter.write("Images Linked = " + DermNetNZCrawler.totalImgLinked + "\r\n");
 			fileWriter.flush();
 			fileWriter.close();
 
