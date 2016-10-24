@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7">
+		<attributes>
+			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="WebCrawler/lib/x64"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="lib" path="lib/crawler4j-4.1-jar-with-dependencies.jar" sourcepath="lib/crawler4j-crawler4j-4.1"/>
 	<classpathentry kind="lib" path="lib/slf4j-jdk14-1.7.21.jar" sourcepath="lib/slf4j-jdk14-1.7.21-sources.jar"/>
 	<classpathentry kind="lib" path="lib/jsoup-1.9.2.jar" sourcepath="lib/jsoup-1.9.2-sources.jar">
@@ -9,5 +13,7 @@
 			<attribute name="javadoc_location" value="https://jsoup.org/apidocs/"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="C:/Program Files (x86)/MySQL/Connector.J 5.1/mysql-connector-java-5.1.39-bin.jar"/>
+	<classpathentry kind="lib" path="lib/opencv-310.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
